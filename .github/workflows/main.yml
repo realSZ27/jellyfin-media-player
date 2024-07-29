@@ -13,28 +13,26 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install Qt 6.5
-      uses: jurplel/install-qt-action@v4
+      uses: jurplel/install-qt-action@v3
       with:
         version: "6.5.*"
         arch: "win64_msvc2019_64"
         modules: "qtwebengine"
     - name: Install dependencies
       run: |
-        ./download_webclient.sh
+        mkdir build
         curl -L https://aka.ms/vs/17/release/vc_redist.x64.exe > vc_redist.x64.exe
         sed -i 's#C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Redist\\MSVC\\v142\\vcredist_x64.exe#'"$(readlink -f vc_redist.x64.exe | sed 's#/\([a-z]\)/#\1:\\#g' | tr '/' '\\' | sed 's/\\/\\\\/g')#g" bundle/win/Bundle.wxs
         curl -L https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-win.zip > ninja.zip
         unzip ninja.zip
         mv ninja.exe build/
-        curl -L https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20231215/mpv-dev-x86_64-20231215-git-e9d0a31.7z > mpv.7z
+        curl -L https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20240513/mpv-dev-x86_64-20240513-git-61f72bd.7z > mpv.7z
         7z x mpv.7z
         mkdir mpv
         mv include mpv
-        mv libmpv-2.dll mpv/mpv.dll
-        echo "LIBRARY MPV" > mpv.def.fixed
-        echo "EXPORTS" >> mpv.def.fixed
-        cat mpv.def >> mpv.def.fixed
-        mv mpv.def.fixed mpv.def
+        gendef libmpv-2.dll
+        mv libmpv-2.dll mpv/libmpv-2.dll
+        mv libmpv-2.def mpv.def
         mv mpv.def libmpv.dll.a mpv/
         mv mpv build/
       shell: bash
@@ -43,8 +41,8 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         cd build
         set PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin;%CD%
-        cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=output -DCMAKE_MAKE_PROGRAM=ninja.exe -DQTROOT=%Qt5_DIR% -DMPV_INCLUDE_DIR=mpv/include -DMPV_LIBRARY=mpv/mpv.dll -DCMAKE_INSTALL_PREFIX=output ..
-        lib /def:mpv\mpv.def /out:mpv\mpv.dll.lib /MACHINE:X64
+        cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=output -DCMAKE_MAKE_PROGRAM=ninja.exe -DQTROOT=%Qt5_DIR% -DMPV_INCLUDE_DIR=mpv/include -DMPV_LIBRARY=mpv/libmpv-2.dll -DCMAKE_INSTALL_PREFIX=output ..
+        lib /def:mpv\mpv.def /out:mpv\libmpv-2.dll.lib /MACHINE:X64
         ninja
         ninja windows_package
       shell: cmd
